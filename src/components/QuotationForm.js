@@ -11,10 +11,11 @@ import AddIcon from '@mui/icons-material/Add';
 import { styled } from '@mui/material/styles';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import dotenv from "dotenv";
-dotenv.config();
 
-// Custom styled components
+// Note: dotenv is not needed in the frontend; environment variables are handled by Next.js
+// Remove dotenv import and dotenv.config()
+
+// Custom styled components (unchanged)
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3),
   boxShadow: theme.shadows[3],
@@ -54,7 +55,7 @@ const StyledInputLabel = styled(InputLabel)(({ theme }) => ({
   marginBottom: theme.spacing(1),
 }));
 
-// TipTap Editor Component
+// TipTap Editor Component (unchanged)
 const TipTapEditor = ({ content, onChange }) => {
   const editor = useEditor({
     extensions: [StarterKit],
@@ -88,7 +89,7 @@ const TipTapEditor = ({ content, onChange }) => {
   );
 };
 
-// TipTap Toolbar Component
+// TipTap Toolbar Component (unchanged)
 const Toolbar = ({ editor }) => {
   if (!editor) {
     return null;
@@ -132,6 +133,14 @@ const Toolbar = ({ editor }) => {
       </Button>
     </Box>
   );
+};
+
+// Utility function to check if HTML content is non-empty
+const isValidItemDescription = (html) => {
+  if (!html) return false;
+  // Strip HTML tags and trim whitespace
+  const textContent = html.replace(/<[^>]+>/g, '').trim();
+  return textContent.length > 0;
 };
 
 const QuotationForm = () => {
@@ -271,11 +280,7 @@ const QuotationForm = () => {
         return;
       }
 
-      const validItems = items.filter(item => {
-        const div = document.createElement('div');
-        div.innerHTML = item.item;
-        return div.textContent.trim() && item.qty > 0 && item.unitPrice > 0;
-      });
+      const validItems = items.filter(item => isValidItemDescription(item.item) && item.qty > 0 && item.unitPrice > 0);
       if (validItems.length === 0) {
         alert('Please add at least one valid item with a description, positive quantity, and price.');
         setLoading(false);
@@ -589,7 +594,7 @@ const QuotationForm = () => {
           <StyledCard>
             <CardContent>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <SectionHeader variant="h5">Principals</SectionHeader>
+                <SectionHeader variantUm="h5">Principals</SectionHeader>
                 <Button
                   startIcon={<AddIcon />}
                   onClick={() => addArrayItem('principal')}
@@ -735,7 +740,7 @@ const QuotationForm = () => {
                           InputLabelProps={{ shrink: true }}
                         />
                         <StyledTextField
-                          label={`Unit Price (${formData.currencyUnit})`}
+                          label={`Unit Price (${formData.currencyUnit || 'Currency'})`}
                           name="unitPrice"
                           type="number"
                           value={item.unitPrice}
@@ -775,24 +780,24 @@ const QuotationForm = () => {
               <FormGrid container spacing={2}>
                 <Grid item xs={12}>
                   {(() => {
-                    const validItems = formData.items.filter(item => {
-                      const div = document.createElement('div');
-                      div.innerHTML = item.item;
-                      return div.textContent.trim() && item.qty > 0 && item.unitPrice > 0;
-                    });
-                    const subTotal = validItems.reduce((acc, item) => acc + item.qty * item.unitPrice * (formData.unitPriceMultiplier || 1), 0);
+                    const validItems = formData.items.filter(item => 
+                      isValidItemDescription(item.item) && item.qty > 0 && item.unitPrice > 0
+                    );
+                    const subTotal = validItems.reduce((acc, item) => 
+                      acc + item.qty * item.unitPrice * (formData.unitPriceMultiplier || 1), 0
+                    );
                     const taxAmount = subTotal * parseFloat(formData.tax || 0);
                     const grandTotal = subTotal + taxAmount;
                     return (
                       <Box sx={{ p: 2 }}>
                         <Typography variant="body1">
-                          Subtotal: {formData.currencyUnit} <strong>{subTotal.toFixed(2)}</strong>
+                          Subtotal: {formData.currencyUnit || 'Currency'} <strong>{subTotal.toFixed(2)}</strong>
                         </Typography>
                         <Typography variant="body1">
-                          Tax Amount ({(formData.tax * 100).toFixed(0)}%): {formData.currencyUnit} <strong>{taxAmount.toFixed(2)}</strong>
+                          Tax Amount ({(formData.tax * 100).toFixed(0)}%): {formData.currencyUnit || 'Currency'} <strong>{taxAmount.toFixed(2)}</strong>
                         </Typography>
                         <Typography variant="body1">
-                          Grand Total: {formData.currencyUnit} <strong>{grandTotal.toFixed(2)}</strong>
+                          Grand Total: {formData.currencyUnit || 'Currency'} <strong>{grandTotal.toFixed(2)}</strong>
                         </Typography>
                       </Box>
                     );
@@ -817,7 +822,6 @@ const QuotationForm = () => {
         </form>
       </Paper>
     </Container>
-
   );
 };
 
