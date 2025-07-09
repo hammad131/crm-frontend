@@ -307,7 +307,7 @@ const TenderForm = () => {
         user: userId
       };
 
-      await axios.post(`${process.env.NEXT_PUBLIC_API}api/tenders`, payload, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API}/api/tenders`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
