@@ -241,7 +241,7 @@ const QuotationDetail = () => {
                     { primary: 'Mode', secondary: quotation.mode },
                     { primary: 'Other Mode', secondary: quotation.modeOtherText || 'N/A', condition: quotation.mode === 'Other' },
                     { primary: 'Quote Validity (Days)', secondary: quotation.quoteValidityDays || 'N/A' },
-                    { primary: 'Unit Price Multiplier', secondary: quotation.unitPriceMultiplier.toFixed(2) },
+                    { primary: 'Net Price Multiplier', secondary: quotation.unitPriceMultiplier.toFixed(2) },
                   ].filter(item => !item.condition || item.condition).map(({ primary, secondary, icon }, index) => (
                     <StyledListItem key={primary} index={index}>
                       <ListItemText
@@ -363,8 +363,8 @@ const QuotationDetail = () => {
             <Divider sx={{ my: 2, borderColor: 'grey.300' }} />
             <Grid container spacing={2}>
               {[
-                { field: 'oemSpecification', label: 'OEM Specification' },
-                { field: 'approvedBy', label: 'Approval Document' },
+                { field: 'oemSpecification', label: 'OEM Quotation' },
+                { field: 'approvedBy', label: 'Approved By' },
               ].map(({ field, label }) => (
                 quotation[field] && (
                   <Grid item xs={12} sm={6} md={4} key={field}>
@@ -395,7 +395,7 @@ const QuotationDetail = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>S.No</TableCell>
-                    <TableCell>Reference Number</TableCell>
+                    <TableCell>Model No</TableCell>
                     <TableCell>Item Description</TableCell>
                     <TableCell>Quantity</TableCell>
                     <TableCell>Unit Price</TableCell>

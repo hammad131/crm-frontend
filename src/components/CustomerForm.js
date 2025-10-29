@@ -26,7 +26,7 @@ const CustomerForm = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-      await axios.post(`${process.env.API}/api/customers`, form, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API}/api/customers`, form, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert("Customer created successfully");

@@ -4,14 +4,11 @@ import { jwtDecode } from 'jwt-decode';
 import {
   Container, Typography, TextField, Grid, Button, MenuItem,
   InputLabel, Box, Card, CardContent, Divider, IconButton, Paper,
-  FormControl, Select
+  FormControl
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { styled } from '@mui/material/styles';
-
-import dotenv from "dotenv";
-dotenv.config();
 
 // Custom styled components
 const StyledCard = styled(Card)(({ theme }) => ({
@@ -49,12 +46,16 @@ const InvoiceForm = () => {
     invoiceDate: '',
     customerId: '',
     orderReference: '',
+    tenderId: '',
+    forCompany: 'Paktech',
     paymentInstructions: 'Make all checks payable to M/S. PAKTECH INSTRUMENTS COMPANY',
     status: 'Not Paid',
     items: [{ sNo: 1, description: '', qty: 1, unitPrice: 0, gst: 0 }],
   });
   const [customers, setCustomers] = useState([]);
   const [quotations, setQuotations] = useState([]);
+  const [tenders, setTenders] = useState([]);
+  const [tenderItems, setTenderItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -62,18 +63,43 @@ const InvoiceForm = () => {
       const token = localStorage.getItem('token');
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const [customersRes, quotationsRes] = await Promise.all([
+        const [customersRes, quotationsRes, tendersRes] = await Promise.all([
           axios.get(`${process.env.NEXT_PUBLIC_API}/api/customers`, { headers }),
-          axios.get(`${process.env.NEXT_PUBLIC_API}/api/quotation`, { headers }),
+          axios.get(`${process.env.NEXT_PUBLIC_API}/api/quotations`, { headers }),
+          axios.get(`${process.env.NEXT_PUBLIC_API}/api/tenders`, { headers }),
         ]);
-        setCustomers(customersRes.data);
-        setQuotations(quotationsRes.data);
+        setCustomers(customersRes.data || []);
+        setQuotations(quotationsRes.data || []);
+        setTenders(tendersRes.data || []);
       } catch (error) {
         console.error('Failed to fetch data:', error);
       }
     };
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const fetchTenderItems = async () => {
+      if (formData.tenderId) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.error('No token found');
+          return;
+        }
+        try {
+          const headers = { Authorization: `Bearer ${token}` };
+          const response = await axios.get(`${process.env.NEXT_PUBLIC_API}/api/tenders/${formData.tenderId}`, { headers });
+          setTenderItems(response.data.items || []);
+        } catch (error) {
+          console.error('Failed to fetch tender items:', error);
+          setTenderItems([]);
+        }
+      } else {
+        setTenderItems([]);
+      }
+    };
+    fetchTenderItems();
+  }, [formData.tenderId]);
 
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
@@ -150,15 +176,17 @@ const InvoiceForm = () => {
 
       alert('Invoice created successfully!');
 
-      // Reset form
       setFormData({
         invoiceDate: '',
         customerId: '',
         orderReference: '',
+        tenderId: '',
+        forCompany: 'Paktech',
         paymentInstructions: 'Make all checks payable to M/S. PAKTECH INSTRUMENTS COMPANY',
         status: 'Not Paid',
         items: [{ sNo: 1, description: '', qty: 1, unitPrice: 0, gst: 0 }],
       });
+      setTenderItems([]);
     } catch (error) {
       console.error('Error creating invoice:', error);
       alert(`Failed to create invoice: ${error.response?.data?.message || error.message}`);
@@ -166,6 +194,9 @@ const InvoiceForm = () => {
       setLoading(false);
     }
   };
+
+  // Helper to strip HTML for display in dropdown
+const stripHtml = (html = '') => html.replace(/<[^>]+>/g, '').trim();
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -206,9 +237,43 @@ const InvoiceForm = () => {
                       onChange={handleChange}
                       InputLabelProps={{ shrink: true }}
                     >
+                      <MenuItem value="">None</MenuItem>
                       {quotations.map((quote) => (
                         <MenuItem key={quote._id} value={quote._id}>{quote.quoteNo || quote._id}</MenuItem>
                       ))}
+                    </StyledTextField>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <StyledTextField
+                      select
+                      label="Tender Reference"
+                      name="tenderId"
+                      value={formData.tenderId}
+                      onChange={handleChange}
+                      InputLabelProps={{ shrink: true }}
+                    >
+                      <MenuItem value="">None</MenuItem>
+                      {tenders.map((tender) => (
+                        <MenuItem key={tender._id} value={tender._id}>{tender.title}</MenuItem>
+                      ))}
+                    </StyledTextField>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth required>
+                    <StyledTextField
+                      select
+                      label="For Company"
+                      name="forCompany"
+                      value={formData.forCompany}
+                      onChange={handleChange}
+                      InputLabelProps={{ shrink: true }}
+                    >
+                      <MenuItem value="Paktech">Paktech</MenuItem>
+                      <MenuItem value="Link Lines">Link Lines</MenuItem>
+                      <MenuItem value="Techno">Techno</MenuItem>
                     </StyledTextField>
                   </FormControl>
                 </Grid>
@@ -277,15 +342,35 @@ const InvoiceForm = () => {
                   <Grid item xs={12} key={index}>
                     <Grid container spacing={2} alignItems="center">
                       <Grid item xs={12} sm={3}>
-                        <StyledTextField
-                          label="Item Description"
-                          name="description"
-                          value={item.description}
-                          onChange={(e) => handleItemChange(index, e)}
-                          fullWidth
-                          required
-                          InputLabelProps={{ shrink: true }}
-                        />
+                        {formData.tenderId && tenderItems.length > 0 ? (
+                          <FormControl fullWidth required>
+                            <StyledTextField
+                              select
+                              label="Item Description"
+                              name="description"
+                              value={item.description}
+                              onChange={(e) => handleItemChange(index, e)}
+                              InputLabelProps={{ shrink: true }}
+                            >
+                              <MenuItem value="">Select Description</MenuItem>
+                              {tenderItems.map((tenderItem, idx) => (
+                                <MenuItem key={idx} value={tenderItem.itemName}>
+                                  {stripHtml(tenderItem.itemName)}
+                                </MenuItem>
+                              ))}
+                            </StyledTextField>
+                          </FormControl>
+                        ) : (
+                          <StyledTextField
+                            label="Item Description"
+                            name="description"
+                            value={item.description}
+                            onChange={(e) => handleItemChange(index, e)}
+                            fullWidth
+                            required
+                            InputLabelProps={{ shrink: true }}
+                          />
+                        )}
                       </Grid>
                       <Grid item xs={12} sm={2}>
                         <StyledTextField

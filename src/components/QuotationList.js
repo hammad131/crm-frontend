@@ -99,7 +99,7 @@ const QuotationList = () => {
                   <TableCell>{q.quoteNo}</TableCell>
                   <TableCell>{q.customerId?.universityName || "N/A"}</TableCell>
                   <TableCell>{q.customerId?.departmentName || "N/A"}</TableCell>
-                  <TableCell>{q.grandTotal.toFixed(2)}</TableCell>
+                  <TableCell>{q.currencyUnit} {q.grandTotal.toFixed(2)}</TableCell>
                   <TableCell>{q.userId?.name || "N/A"}</TableCell>
                   <TableCell>
                     <IconButton size="small" onClick={() => router.push(`/quotations/${q._id}`)}>

@@ -1,177 +1,3 @@
-// import jsPDF from "jspdf";
-// import autoTable from "jspdf-autotable";
-
-// export const generateQuotationPdf = (quotation) => {
-//   const doc = new jsPDF();
-
-//   const {
-//     quoteNo,
-//     quoteDate,
-//     tax = 0,
-//     customerId = {},
-//     items = [],
-//     subTotal = 0,
-//     grandTotal = 0,
-//     delivery = "N/A",
-//     warranty = "N/A",
-//     coOrigin = [],
-//     principal = [],
-//     paymentTerms = "N/A",
-//     mode = "N/A",
-//     modeOtherText = "",
-//     quoteValidityDays = 30,
-//     unitPriceMultiplier = 1,
-//     currencyUnit,
-//     forCompany,
-//     oemSpecification,
-//     approvedBy,
-//   } = quotation;
-
-//   const isFOR = mode === "F.O.R";
-//   const currencySymbol = currencyUnit;
-//   const taxAmount = subTotal * tax;
-//   let cursorY = 35;
-
-//   // Logo
-//   try {
-//     doc.addImage("/images/header.png", "PNG", 15, 10, 180, 20);
-//   } catch {
-//     doc.setFontSize(10).text("Paktech Logo", 14, 15);
-//   }
-
-//   // Quotation title
-//   doc.setFontSize(16).setTextColor(0);
-//   doc.text("QUOTATION", 105, cursorY, { align: "center" });
-//   cursorY += 10;
-
-//   // Quote details
-//   doc.setFontSize(9);
-//   doc.text(`Quote No: ${quoteNo || "N/A"}`, 14, cursorY);
-//   doc.text(`Date: ${quoteDate ? new Date(quoteDate).toLocaleDateString() : "N/A"}`, 14, cursorY += 5);
-//   doc.text(`Mode: ${mode}${modeOtherText && mode === "Other" ? ` (${modeOtherText})` : ""}`, 14, cursorY += 5);
-//   doc.text(`Prices: ${currencyUnit}`, 14, cursorY += 5);
-//   doc.text(`Validity: ${quoteValidityDays} Days`, 14, cursorY += 5);
-
-//   // Customer box
-//   const customerLines = [
-//     `${customerId.departmentName || "N/A"} Department`,
-//     `${customerId.universityName || "N/A"}`,
-//     `Address: ${customerId.address || "N/A"}`,
-//     `Phone: ${customerId.phone || "N/A"}`,
-//     `Email:${customerId.email || "N/A"}`
-//   ];
-//   const customerBoxX = 120;
-//   const customerBoxY = 40;
-//   const customerBoxWidth = 75;
-//   const customerBoxLineHeight = 5;
-//   const customerBoxHeight = 5 + customerLines.length * customerBoxLineHeight + 3;
-
-//   doc.setFillColor(240, 240, 240);
-//   doc.rect(customerBoxX, customerBoxY, customerBoxWidth, customerBoxHeight, "F");
-
-//   let textY = customerBoxY + 5;
-//   doc.setFontSize(9).text("Customer:", customerBoxX + 2, textY);
-//   doc.setFontSize(8);
-//   customerLines.forEach(line => {
-//     textY += customerBoxLineHeight;
-//     doc.text(line, customerBoxX + 2, textY);
-//   });
-
-//   // Item table
-//   autoTable(doc, {
-//     startY: textY + 10,
-//     head: [["#", "Ref", "Item Description", "Qty", `Unit (${currencyUnit})`, `Total (${currencyUnit})`]],
-//     body: items.map((item, i) => [
-//       item.sNo || i + 1,
-//       item.refNo || "-",
-//       item.item || "-",
-//       item.qty || 0,
-//       ((item.unitPrice || 0) * unitPriceMultiplier).toFixed(2),
-//       (item.qty * (item.unitPrice || 0) * unitPriceMultiplier).toFixed(2),
-//     ]),
-//     styles: { fontSize: 8, halign: "center" },
-//     headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontSize: 9 },
-//     alternateRowStyles: { fillColor: [250, 250, 250] },
-//     theme: "striped",
-//   });
-
-//   const finalY = doc.lastAutoTable.finalY + 5;
-
-//   // Subtotal, Tax, Grand Total
-//   doc.setFillColor(245, 245, 245);
-//   doc.rect(140, finalY, 60, 6, "F");
-//   doc.setFontSize(9).setTextColor(0);
-//   doc.text("Sub Total:", 145, finalY + 4);
-//   doc.text(`${currencyUnit} ${subTotal.toFixed(2)}`, 195, finalY + 4, { align: "right" });
-
-//   doc.setFillColor(245, 245, 245);
-//   doc.rect(140, finalY + 6, 60, 6, "F");
-//   doc.text(`Tax (${(tax * 100).toFixed(0)}%):`, 145, finalY + 10);
-//   doc.text(`${currencyUnit} ${taxAmount.toFixed(2)}`, 195, finalY + 10, { align: "right" });
-
-//   doc.setFillColor(0);
-//   doc.setTextColor(255, 255, 255);
-//   doc.rect(140, finalY + 12, 60, 8, "F");
-//   doc.text("Grand Total:", 145, finalY + 18);
-//   doc.text(`${currencyUnit} ${grandTotal.toFixed(2)}`, 195, finalY + 18, { align: "right" });
-
-//   doc.setTextColor(0);
-
-//   // Note
-//   let docY = finalY + 25;
-//   doc.setFontSize(8);
-//   doc.text(
-//     "We assure you of the best quality products with prompt services.",
-//     14,
-//     (docY += 10)
-//   );
-
-//   // Terms and conditions box
-//   doc.setDrawColor(150);
-//   doc.rect(14, docY + 5, 180, 35);
-//   doc.setFontSize(9).text("Terms and Conditions:", 16, docY += 10);
-//   doc.setFontSize(8);
-//   doc.text(`Delivery: ${delivery}`, 16, docY += 5);
-//   doc.text(`Warranty: ${warranty}`, 16, docY += 5);
-//   doc.text(`Payment: ${paymentTerms}`, 16, docY += 5);
-//   doc.text(`Origin: ${coOrigin.length ? coOrigin.join(", ") : "N/A"}`, 16, docY += 5);
-//   doc.text(`Principal: ${principal.length ? principal.join(", ") : "N/A"}`, 16, docY += 5);
-
-//   // Signature
-//   try {
-//     doc.addImage("/images/signature.png", "PNG", 14, docY + 5, 40, 0);
-//   } catch {
-//     doc.setFontSize(8).text("Authorized Signature: ___________________", 14, docY + 10);
-//   }
-
-//   // FOOTER: Only on last page
-//   const pageCount = doc.internal.getNumberOfPages();
-//   const lastPage = pageCount;
-//   doc.setPage(lastPage);
-
-//   doc.setDrawColor(0);
-//   doc.setLineWidth(0.5);
-//   doc.line(14, 285, 196, 285); // divider
-
-//   doc.setFontSize(8).setTextColor(0);
-//   doc.setFont(undefined, 'bold');
-//   doc.text("# 236, 1st FLOOR, STREET 15, BLOCK-3, SHARAFABAD, KARACHI 74800=PAKISTAN", 105, 290, { align: "center" });
-
-//   doc.setFont(undefined, 'normal');
-//   doc.textWithLink(
-//     "TEL: (92 21) 34949215 / 4930971 E-MAIL: info@paktech1.com Web: www.paktech1.com",
-//     105,
-//     295,
-//     {
-//       align: "center",
-//       link: "http://www.paktech1.com"
-//     }
-//   );
-
-//   doc.save(`Quotation_${quoteNo || "Preview"}.pdf`);
-// };
-
-
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import DOMPurify from "dompurify";
@@ -208,22 +34,16 @@ export const generatePaktechQuotationPdf = (quotation) => {
   const taxAmount = subTotal * tax;
 
   // Header
-  // doc.setFontSize(14).setTextColor(200, 0, 0).setFont(undefined, "normal");
-  // doc.text("QUOTATION", 105, 40, { align: "center" });
   doc.setFontSize(14).setTextColor(200, 0, 0).setFont(undefined, "bold");
+  doc.text("QUOTATION", 105, 40, { align: "center" });
 
-    // Draw the text centered
-    doc.text("QUOTATION", 105, 40, { align: "center" });
-
-    // Draw underline manually (position: center-aligned under the word)
-    const textWidth = doc.getTextWidth("QUOTATION");
-    const startX = 105 - textWidth / 2;
-    const underlineY = 41; // slightly below text baseline
-
-    doc.setDrawColor(200, 0, 0);
-    doc.setLineWidth(0.5);
-    doc.line(startX, underlineY, startX + textWidth, underlineY);
-
+  // Draw underline manually
+  const textWidth = doc.getTextWidth("QUOTATION");
+  const startX = 105 - textWidth / 2;
+  const underlineY = 41;
+  doc.setDrawColor(200, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.line(startX, underlineY, startX + textWidth, underlineY);
 
   // Bill To
   let y = 45;
@@ -256,46 +76,57 @@ export const generatePaktechQuotationPdf = (quotation) => {
       ["Lead By", userId.name || ""],
       ["Incoterms", `${mode}${mode === "Other" ? ` (${modeOtherText})` : ""}`],
       ["Payment Terms", paymentTerms],
-      // ["Delivery Time", delivery],
       ["Prices", currencyUnit],
     ],
   });
+
+  // Function to convert HTML to formatted text
+  const htmlToFormattedText = (html) => {
+    if (!html) return "";
+    
+    const div = document.createElement("div");
+    div.innerHTML = DOMPurify.sanitize(html);
+    
+    let lines = [];
+    const processNode = (node) => {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+        lines.push(node.textContent.trim());
+      } else if (node.nodeName === 'P' && node.textContent.trim()) {
+        lines.push(node.textContent.trim());
+      } else if (node.nodeName === 'STRONG' || node.nodeName === 'B') {
+        lines.push(`**${node.textContent.trim()}**`);
+      } else if (node.nodeName === 'UL' || node.nodeName === 'OL') {
+        node.querySelectorAll('li').forEach(li => {
+          lines.push(`• ${li.textContent.trim()}`);
+        });
+      } else if (node.nodeName === 'LI') {
+        lines.push(`• ${node.textContent.trim()}`);
+      } else if (node.childNodes) {
+        Array.from(node.childNodes).forEach(processNode);
+      }
+    };
+    
+    Array.from(div.childNodes).forEach(processNode);
+    
+    return lines.join('\n')
+      .replace(/●/g, '•')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&');
+  };
 
   // Item Table
   autoTable(doc, {
     startY: doc.lastAutoTable.finalY + 10,
     head: [["Sr-#", "Model", "Item & Description", "Qty", `Rate (${currencyUnit})`, "Tax", `Amount (${currencyUnit})`]],
-    body: items.map((item, i) => {
-      const sanitizedItem = item.item ? DOMPurify.sanitize(item.item) : "-";
-      const div = document.createElement("div");
-      div.innerHTML = sanitizedItem.replace(/<br\s*\/?>/gi, "\n");
-
-      let lines = [];
-      Array.from(div.childNodes).forEach((node) => {
-        if (node.nodeName === "P" && node.textContent.trim()) {
-          const text = node.textContent.trim();
-          const isBold = node.querySelector("strong") !== null;
-          lines.push(isBold ? `**${text}**` : text);
-        }
-        if (node.nodeName === "UL") {
-          node.querySelectorAll("li").forEach((li) => {
-            lines.push(`• ${li.textContent.trim()}`);
-          });
-        }
-      });
-
-      const formatted = lines.join("\n");
-
-      return [
-        item.sNo || i + 1,
-        item.refNo || "-",
-        formatted,
-        item.qty || 0,
-        ((item.unitPrice || 0) * unitPriceMultiplier).toFixed(2),
-        (item.tax || 0).toFixed(2),
-        ((item.unitPrice || 0) * item.qty * unitPriceMultiplier).toFixed(2),
-      ];
-    }),
+    body: items.map((item, i) => [
+      item.sNo || i + 1,
+      item.refNo || "-",
+      htmlToFormattedText(item.item),
+      item.qty || 0,
+      ((item.unitPrice || 0) * unitPriceMultiplier).toFixed(2),
+      (item.tax || 0).toFixed(2),
+      ((item.unitPrice || 0) * item.qty * unitPriceMultiplier).toFixed(2),
+    ]),
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [242, 242, 242], textColor: 0, fontStyle: "bold" },
     columnStyles: {
@@ -357,33 +188,28 @@ export const generatePaktechQuotationPdf = (quotation) => {
   }
 
   doc.setFontSize(9).setTextColor(0).setFont(undefined, "bold");
-doc.text("Term & Conditions:", 14, yT);
+  doc.text("Term & Conditions:", 14, yT);
 
-// Draw underline manually
-const headingTextWidth = doc.getTextWidth("Term & Conditions:");
-const termsunderlineY = yT + 1; // slightly below the text baseline
-doc.setDrawColor(0);
-doc.setLineWidth(0.3);
-doc.line(14, termsunderlineY, 14 + headingTextWidth, termsunderlineY);
+  const headingTextWidth = doc.getTextWidth("Term & Conditions:");
+  const termsunderlineY = yT + 1;
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.3);
+  doc.line(14, termsunderlineY, 14 + headingTextWidth, termsunderlineY);
 
-// Terms (normal font)
-doc.setFontSize(8).setFont(undefined, "normal");
-terms.forEach((line, i) => {
-  const lineHeight = 5;
-  if (yT + (i + 1) * lineHeight > CONTENT_MAX_Y) {
-    doc.addPage();
-    yT = 20;
-
-    // Re-add heading on new page
-    doc.setFontSize(9).setFont(undefined, "bold");
-    doc.text("Term & Conditions (cont.):", 14, yT);
-    const continuedTextWidth = doc.getTextWidth("Term & Conditions (cont.):");
-    doc.line(14, yT + 1, 14 + continuedTextWidth, yT + 1);
-
-    doc.setFontSize(8).setFont(undefined, "normal");
-  }
-  doc.text(line, 14, yT + (i + 1) * lineHeight);
-});
+  doc.setFontSize(8).setFont(undefined, "normal");
+  terms.forEach((line, i) => {
+    const lineHeight = 5;
+    if (yT + (i + 1) * lineHeight > CONTENT_MAX_Y) {
+      doc.addPage();
+      yT = 20;
+      doc.setFontSize(9).setFont(undefined, "bold");
+      doc.text("Term & Conditions (cont.):", 14, yT);
+      const continuedTextWidth = doc.getTextWidth("Term & Conditions (cont.):");
+      doc.line(14, yT + 1, 14 + continuedTextWidth, yT + 1);
+      doc.setFontSize(8).setFont(undefined, "normal");
+    }
+    doc.text(line, 14, yT + (i + 1) * lineHeight);
+  });
 
   yT += (terms.length + 1) * 5;
 
@@ -399,8 +225,6 @@ terms.forEach((line, i) => {
   } catch {
     doc.setFontSize(8).text("Authorized Signature: ___________________", 14, yT + 10);
   }
-
-  // (No footer at all)
 
   doc.save(`Quotation_${quoteNo || "Paktech"}.pdf`);
 };
@@ -427,9 +251,6 @@ export const generateTechnoQuotationPdf = (quotation) => {
     quoteValidityDays = 30,
     unitPriceMultiplier = 1,
     currencyUnit = "PKR",
-    forCompany,
-    oemSpecification,
-    approvedBy,
   } = quotation;
 
   const currencySymbol = currencyUnit;
@@ -474,40 +295,52 @@ export const generateTechnoQuotationPdf = (quotation) => {
     doc.text(line, customerBoxX + 2, textY);
   });
 
+  // Function to convert HTML to formatted text
+  const htmlToFormattedText = (html) => {
+    if (!html) return "";
+    
+    const div = document.createElement("div");
+    div.innerHTML = DOMPurify.sanitize(html);
+    
+    let lines = [];
+    const processNode = (node) => {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+        lines.push(node.textContent.trim());
+      } else if (node.nodeName === 'P' && node.textContent.trim()) {
+        lines.push(node.textContent.trim());
+      } else if (node.nodeName === 'STRONG' || node.nodeName === 'B') {
+        lines.push(`**${node.textContent.trim()}**`);
+      } else if (node.nodeName === 'UL' || node.nodeName === 'OL') {
+        node.querySelectorAll('li').forEach(li => {
+          lines.push(`• ${li.textContent.trim()}`);
+        });
+      } else if (node.nodeName === 'LI') {
+        lines.push(`• ${node.textContent.trim()}`);
+      } else if (node.childNodes) {
+        Array.from(node.childNodes).forEach(processNode);
+      }
+    };
+    
+    Array.from(div.childNodes).forEach(processNode);
+    
+    return lines.join('\n')
+      .replace(/●/g, '•')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&');
+  };
+
   // Item table with formatting support
   autoTable(doc, {
     startY: textY + 10,
-    head: [["#", "Ref", "Item Description", "Qty", `Unit (${currencySymbol})`, `Total (${currencySymbol})`]],
-    body: items.map((item, i) => {
-      const sanitizedItem = item.item ? DOMPurify.sanitize(item.item) : "-";
-      const div = document.createElement("div");
-      div.innerHTML = sanitizedItem.replace(/<br\s*\/?>/gi, "\n");
-
-      let lines = [];
-      Array.from(div.childNodes).forEach((node) => {
-        if (node.nodeName === "P" && node.textContent.trim()) {
-          const text = node.textContent.trim();
-          const isBold = node.querySelector("strong") !== null;
-          lines.push(isBold ? `**${text}**` : text);
-        }
-        if (node.nodeName === "UL") {
-          node.querySelectorAll("li").forEach((li) => {
-            lines.push(`• ${li.textContent.trim()}`);
-          });
-        }
-      });
-
-      const formatted = lines.join("\n");
-
-      return [
-        item.sNo || i + 1,
-        item.refNo || "-",
-        formatted,
-        item.qty || 0,
-        ((item.unitPrice || 0) * unitPriceMultiplier).toFixed(2),
-        (item.qty * (item.unitPrice || 0) * unitPriceMultiplier).toFixed(2),
-      ];
-    }),
+    head: [["#", "Model No", "Items Description", "Qty", `Unit (${currencySymbol})`, `Total (${currencySymbol})`]],
+    body: items.map((item, i) => [
+      item.sNo || i + 1,
+      item.refNo || "-",
+      htmlToFormattedText(item.item),
+      item.qty || 0,
+      ((item.unitPrice || 0) * unitPriceMultiplier).toFixed(2),
+      (item.qty * (item.unitPrice || 0) * unitPriceMultiplier).toFixed(2),
+    ]),
     styles: { fontSize: 8, halign: "left" },
     headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontSize: 9 },
     alternateRowStyles: { fillColor: [250, 250, 250] },
@@ -586,6 +419,7 @@ export const generateTechnoQuotationPdf = (quotation) => {
 
   doc.save(`Quotation_${quoteNo || "Preview"}.pdf`);
 };
+
 // Main function to decide which template to use
 export const generateQuotationPdf = (quotation) => {
   const { forCompany } = quotation;
@@ -595,6 +429,6 @@ export const generateQuotationPdf = (quotation) => {
   } else if (forCompany === "Paktech") {
     generatePaktechQuotationPdf(quotation);
   } else {
-    throw new Error("Invalid forCompany value. Must be 'techno' or 'Paktech'.");
+    throw new Error("Invalid forCompany value. Must be 'Techno' or 'Paktech'.");
   }
 };

@@ -90,7 +90,7 @@ const PurchaseOrderList = () => {
                 <TableCell>{po.poNumber}</TableCell>
                 <TableCell>{po.vendorId?.name || "N/A"}</TableCell>
                 <TableCell>{po.poDate?.slice(0, 10)}</TableCell>
-                <TableCell>Rs. {po.grandTotal.toFixed(2)}</TableCell>
+                <TableCell>{po.currencyUnit} {po.grandTotal.toFixed(2)}</TableCell>
                 <TableCell>{po.userId?.name || "N/A"}</TableCell>
                 <TableCell>
                   <IconButton size="small" onClick={() => router.push(`/purchase-orders/${po._id}`)}>

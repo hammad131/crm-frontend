@@ -21,6 +21,7 @@ export const generatePOPdf = async (po) => {
     items = [],
     subTotal = 0,
     grandTotal = 0,
+    currencyUnit = "",
     unitPriceMultiplier = 1,
     tax = 0,
     deliveryTerms = "12-16 weeks after confirmed order",
@@ -34,7 +35,7 @@ export const generatePOPdf = async (po) => {
   } = po;
 
   // Format currency based on mode
-  const currency = mode === "F.O.R" ? "PKR" : "USD";
+  const currency = currencyUnit;
   const formatCurrency = (amount) => {
     if (!amount && amount !== 0) return "N/A";
     return new Intl.NumberFormat("en-US", {

@@ -4,14 +4,12 @@ import { jwtDecode } from 'jwt-decode';
 import {
   Container, Typography, TextField, Grid, Button, MenuItem,
   InputLabel, Box, Card, CardContent, Divider, IconButton, Paper,
-  FormControl, Select
+  FormControl
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { styled } from '@mui/material/styles';
 
-import dotenv from "dotenv";
-dotenv.config();
 // Custom styled components
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3),
@@ -57,12 +55,14 @@ const PurchaseOrderForm = () => {
     poDate: '',
     vendorId: '',
     clientRefNo: '',
+    tenderId: '',
     clientOrderNo: '',
     mode: 'F.O.R',
-    shipTo: { name: '', address: '', city: '', zip: '', phone: '', fax: '', email: '' },
+    shipTo: { name: '', address: '', city: '', zip: '', phone: '', fax: '', email: '', destination: '' },
     shippingTerms: '',
     shippingMethod: '',
     deliveryDate: '',
+    currencyUnit: '',
     items: [{ sNo: 1, description: '', qty: 1, unitPrice: 0, totalPrice: 0 }],
     subTotal: 0,
     grandTotal: 0,
@@ -77,6 +77,8 @@ const PurchaseOrderForm = () => {
   });
   const [vendors, setVendors] = useState([]);
   const [quotations, setQuotations] = useState([]);
+  const [tenders, setTenders] = useState([]);
+  const [tenderItems, setTenderItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -84,18 +86,43 @@ const PurchaseOrderForm = () => {
       const token = localStorage.getItem('token');
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const [vendorsRes, quotationsRes] = await Promise.all([
+        const [vendorsRes, quotationsRes, tendersRes] = await Promise.all([
           axios.get(`${process.env.NEXT_PUBLIC_API}/api/vendors`, { headers }),
           axios.get(`${process.env.NEXT_PUBLIC_API}/api/quotations`, { headers }),
+          axios.get(`${process.env.NEXT_PUBLIC_API}/api/tenders`, { headers }),
         ]);
-        setVendors(vendorsRes.data);
-        setQuotations(quotationsRes.data);
+        setVendors(vendorsRes.data || []);
+        setQuotations(quotationsRes.data || []);
+        setTenders(tendersRes.data || []);
       } catch (error) {
         console.error('Failed to fetch data:', error);
       }
     };
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const fetchTenderItems = async () => {
+      if (formData.tenderId) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.error('No token found');
+          return;
+        }
+        try {
+          const headers = { Authorization: `Bearer ${token}` };
+          const response = await axios.get(`${process.env.NEXT_PUBLIC_API}/api/tenders/${formData.tenderId}`, { headers });
+          setTenderItems(response.data.items || []);
+        } catch (error) {
+          console.error('Failed to fetch tender items:', error);
+          setTenderItems([]);
+        }
+      } else {
+        setTenderItems([]);
+      }
+    };
+    fetchTenderItems();
+  }, [formData.tenderId]);
 
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
@@ -107,7 +134,6 @@ const PurchaseOrderForm = () => {
       updatedItems[index].totalPrice = (updatedItems[index].qty || 0) * (updatedItems[index].unitPrice || 0);
     }
     setFormData({ ...formData, items: updatedItems });
-    console.log('Updated Items:', updatedItems);
   };
 
   const addItem = () => {
@@ -128,9 +154,7 @@ const PurchaseOrderForm = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'tax' || name === 'unitPriceMultiplier') {
-      const newValue = parseFloat(value) || 0;
-      setFormData((prev) => ({ ...prev, [name]: newValue }));
-      console.log(`Updated ${name}:`, newValue);
+      setFormData((prev) => ({ ...prev, [name]: parseFloat(value) || 0 }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -157,7 +181,7 @@ const PurchaseOrderForm = () => {
 
       const validItems = items.filter(item => item.description && item.qty > 0 && item.unitPrice > 0);
       if (validItems.length === 0) {
-        alert('Please add at least one valid item with positive quantity and price.');
+        alert('Please add at least one valid item with a description, positive quantity, and price.');
         setLoading(false);
         return;
       }
@@ -166,7 +190,6 @@ const PurchaseOrderForm = () => {
       const decoded = jwtDecode(token);
       const userId = decoded.userId || decoded.id || decoded._id;
 
-      // Calculate totals
       const baseTotal = validItems.reduce((acc, item) => acc + item.qty * item.unitPrice, 0);
       const subTotal = baseTotal * (formData.unitPriceMultiplier || 1);
       const taxAmount = subTotal * parseFloat(formData.tax || 0);
@@ -181,33 +204,24 @@ const PurchaseOrderForm = () => {
         tax: parseFloat(formData.tax || 0),
       };
 
-      console.log('Purchase Order Data Sent:', {
-        subTotal,
-        unitPriceMultiplier: formData.unitPriceMultiplier,
-        taxAmount,
-        grandTotal,
-        items: validItems,
-      });
-
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_API}/api/purchase-orders`, purchaseOrderData, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API}/api/purchase-orders`, purchaseOrderData, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log('Backend Response:', response.data);
-
       alert('Purchase Order created successfully!');
 
-      // Reset form
       setFormData({
         poDate: '',
         vendorId: '',
         clientRefNo: '',
+        tenderId: '',
         clientOrderNo: '',
         mode: 'F.O.R',
-        shipTo: { name: '', address: '', city: '', zip: '', phone: '', fax: '', email: '' },
+        shipTo: { name: '', address: '', city: '', zip: '', phone: '', fax: '', email: '', destination: '' },
         shippingTerms: '',
         shippingMethod: '',
         deliveryDate: '',
+        currencyUnit: '',
         items: [{ sNo: 1, description: '', qty: 1, unitPrice: 0, totalPrice: 0 }],
         subTotal: 0,
         grandTotal: 0,
@@ -219,8 +233,8 @@ const PurchaseOrderForm = () => {
         inspectionTerms: 'The Buyer shall inspect the equipment upon delivery and notify the Seller of any defects or discrepancies within five days.',
         forceMajeure: 'Paktech will not be liable for any failure to perform due to unforeseen circumstances beyond our control.',
         customsCompliance: 'The Buyer shall comply with all applicable customs regulations and provide necessary documentation if applicable.',
-
       });
+      setTenderItems([]);
     } catch (error) {
       console.error('Error creating purchase order:', error);
       alert(`Failed to create purchase order: ${error.response?.data?.message || error.message}`);
@@ -235,6 +249,10 @@ const PurchaseOrderForm = () => {
       .replace(/^./, s => s.toUpperCase())
       .replace(/(\b\w)/g, s => s.toUpperCase());
   };
+
+  // Helper to strip HTML for display in dropdown
+ const stripHtml = (html = '') => html.replace(/<[^>]+>/g, '').trim();
+
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -275,8 +293,26 @@ const PurchaseOrderForm = () => {
                       onChange={handleChange}
                       InputLabelProps={{ shrink: true }}
                     >
+                      <MenuItem value="">None</MenuItem>
                       {quotations.map((quote) => (
                         <MenuItem key={quote._id} value={quote._id}>{quote.quoteNo}</MenuItem>
+                      ))}
+                    </StyledTextField>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <StyledTextField
+                      select
+                      label="Tender Reference"
+                      name="tenderId"
+                      value={formData.tenderId}
+                      onChange={handleChange}
+                      InputLabelProps={{ shrink: true }}
+                    >
+                      <MenuItem value="">None</MenuItem>
+                      {tenders.map((tender) => (
+                        <MenuItem key={tender._id} value={tender._id}>{tender.title}</MenuItem>
                       ))}
                     </StyledTextField>
                   </FormControl>
@@ -295,7 +331,7 @@ const PurchaseOrderForm = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <StyledTextField
-                    label="Client Order Number"
+                    label="Client Order Ref"
                     name="clientOrderNo"
                     value={formData.clientOrderNo}
                     onChange={handleChange}
@@ -351,7 +387,6 @@ const PurchaseOrderForm = () => {
                     >
                       <MenuItem value="By Air">By Air</MenuItem>
                       <MenuItem value="By Sea">By Sea</MenuItem>
-                      <MenuItem value="Both By Air and Sea">Both By Air and Sea</MenuItem>
                     </StyledTextField>
                   </FormControl>
                 </Grid>
@@ -435,34 +470,31 @@ const PurchaseOrderForm = () => {
                     InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
+                <Grid item xs={12} sm={6}>
+                  <StyledTextField
+                    label="Destination"
+                    name="destination"
+                    value={formData.shipTo.destination}
+                    onChange={handleShipToChange}
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
               </FormGrid>
             </CardContent>
           </StyledCard>
 
           {/* Financial Information Section */}
-          {/* <StyledCard>
+          <StyledCard>
             <CardContent>
               <SectionHeader variant="h5">Financial Information</SectionHeader>
               <Divider sx={{ mb: 3 }} />
               <FormGrid container spacing={2}>
                 <Grid item xs={12} sm={6}>
                   <StyledTextField
-                    label="Tax (Decimal)"
-                    name="tax"
-                    type="number"
-                    value={formData.tax}
-                    onChange={handleChange}
-                    fullWidth
-                    helperText="Enter tax as a decimal (e.g., 0.13 for 13%)"
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <StyledTextField
-                    label="Unit Price Multiplier"
-                    name="unitPriceMultiplier"
-                    type="number"
-                    value={formData.unitPriceMultiplier}
+                    label="Currency Unit"
+                    name="currencyUnit"
+                    value={formData.currencyUnit}
                     onChange={handleChange}
                     fullWidth
                     InputLabelProps={{ shrink: true }}
@@ -470,7 +502,7 @@ const PurchaseOrderForm = () => {
                 </Grid>
               </FormGrid>
             </CardContent>
-          </StyledCard> */}
+          </StyledCard>
 
           {/* Items Section */}
           <StyledCard>
@@ -493,15 +525,35 @@ const PurchaseOrderForm = () => {
                   <Grid item xs={12} key={index}>
                     <Grid container spacing={2} alignItems="center">
                       <Grid item xs={12} sm={3}>
-                        <StyledTextField
-                          label="Description"
-                          name="description"
-                          value={item.description}
-                          onChange={(e) => handleItemChange(index, e)}
-                          fullWidth
-                          required
-                          InputLabelProps={{ shrink: true }}
-                        />
+                        {formData.tenderId && tenderItems.length > 0 ? (
+                          <FormControl fullWidth required>
+                            <StyledTextField
+                              select
+                              label="Description"
+                              name="description"
+                              value={item.description}
+                              onChange={(e) => handleItemChange(index, e)}
+                              InputLabelProps={{ shrink: true }}
+                            >
+                              <MenuItem value="">Select Description</MenuItem>
+                              {tenderItems.map((tenderItem, idx) => (
+                                <MenuItem key={idx} value={tenderItem.itemName}>
+                                  {stripHtml(tenderItem.itemName)}
+                                </MenuItem>
+                              ))}
+                            </StyledTextField>
+                          </FormControl>
+                        ) : (
+                          <StyledTextField
+                            label="Description"
+                            name="description"
+                            value={item.description}
+                            onChange={(e) => handleItemChange(index, e)}
+                            fullWidth
+                            required
+                            InputLabelProps={{ shrink: true }}
+                          />
+                        )}
                       </Grid>
                       <Grid item xs={12} sm={2}>
                         <StyledTextField
@@ -516,7 +568,7 @@ const PurchaseOrderForm = () => {
                       </Grid>
                       <Grid item xs={12} sm={2}>
                         <StyledTextField
-                          label={`Unit Price (${formData.mode === 'F.O.R' ? 'PKR' : 'USD'})`}
+                          label={`Unit Price (${formData.currencyUnit || (formData.mode === 'F.O.R' ? 'PKR' : 'USD')})`}
                           name="unitPrice"
                           type="number"
                           value={item.unitPrice}
@@ -525,16 +577,6 @@ const PurchaseOrderForm = () => {
                           InputLabelProps={{ shrink: true }}
                         />
                       </Grid>
-                      {/* <Grid item xs={12} sm={2}>
-                        <StyledTextField
-                          label={`Total Price (${formData.mode === 'F.O.R' ? 'PKR' : 'USD'})`}
-                          name="totalPrice"
-                          value={item.totalPrice.toFixed(2)}
-                          InputProps={{ readOnly: true }}
-                          fullWidth
-                          InputLabelProps={{ shrink: true }}
-                        />
-                      </Grid> */}
                       <Grid item xs={12} sm={1}>
                         <IconButton
                           onClick={() => removeItem(index)}
@@ -572,17 +614,15 @@ const PurchaseOrderForm = () => {
                 <Grid item xs={12} sm={6}>
                   <FormControl fullWidth required>
                     <StyledTextField
-                      select
                       label="Payment Terms"
                       name="paymentTerms"
                       value={formData.paymentTerms}
                       onChange={handleChange}
+                      fullWidth
+                      multiline
+                      rows={2}
                       InputLabelProps={{ shrink: true }}
-                    >
-                      <MenuItem value="100% via Irrevocable L/c at sight">100% via Irrevocable L/c at sight</MenuItem>
-                      <MenuItem value="50% advanced & 50% at the time of delivery">50% advanced & 50% at the time of delivery</MenuItem>
-                      <MenuItem value="100% after delivery">100% after delivery</MenuItem>
-                    </StyledTextField>
+                    />
                   </FormControl>
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -674,15 +714,12 @@ const PurchaseOrderForm = () => {
                     const subTotal = baseTotal * (formData.unitPriceMultiplier || 1);
                     const taxAmount = subTotal * parseFloat(formData.tax || 0);
                     const grandTotal = subTotal + taxAmount;
-                    const currencySymbol = formData.mode === 'F.O.R' ? 'Rs.' : '$';
+                    const currencySymbol = formData.currencyUnit || (formData.mode === 'F.O.R' ? 'PKR' : 'USD');
                     return (
                       <Box sx={{ p: 2 }}>
                         <Typography variant="body1">
                           Subtotal: {currencySymbol} <strong>{subTotal.toFixed(2)}</strong>
                         </Typography>
-                        {/* <Typography variant="body1">
-                          Tax Amount ({(formData.tax * 100).toFixed(0)}%): {currencySymbol} <strong>{taxAmount.toFixed(2)}</strong>
-                        </Typography> */}
                         <Typography variant="body1">
                           Grand Total: {currencySymbol} <strong>{grandTotal.toFixed(2)}</strong>
                         </Typography>

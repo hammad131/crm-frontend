@@ -12,24 +12,11 @@ import { styled } from '@mui/material/styles';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 
-// Note: dotenv is not needed in the frontend; environment variables are handled by Next.js
-// Remove dotenv import and dotenv.config()
-
-// Custom styled components (unchanged)
+// Custom styled components
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3),
   boxShadow: theme.shadows[3],
   borderRadius: theme.shape.borderRadius,
-}));
-
-const SectionHeader = styled(Typography)(({ theme }) => ({
-  marginBottom: theme.spacing(2),
-  color: theme.palette.primary.main,
-  fontWeight: 600,
-}));
-
-const FormGrid = styled(Grid)(({ theme }) => ({
-  marginBottom: theme.spacing(2),
 }));
 
 const StyledTextField = styled(TextField)(({ theme }) => ({
@@ -55,7 +42,17 @@ const StyledInputLabel = styled(InputLabel)(({ theme }) => ({
   marginBottom: theme.spacing(1),
 }));
 
-// TipTap Editor Component (unchanged)
+const SectionHeader = styled(Typography)(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+  color: theme.palette.primary.main,
+  fontWeight: 600,
+}));
+
+const FormGrid = styled(Grid)(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+}));
+
+// TipTap Editor Component
 const TipTapEditor = ({ content, onChange }) => {
   const editor = useEditor({
     extensions: [StarterKit],
@@ -89,7 +86,7 @@ const TipTapEditor = ({ content, onChange }) => {
   );
 };
 
-// TipTap Toolbar Component (unchanged)
+// TipTap Toolbar Component
 const Toolbar = ({ editor }) => {
   if (!editor) {
     return null;
@@ -137,8 +134,7 @@ const Toolbar = ({ editor }) => {
 
 // Utility function to check if HTML content is non-empty
 const isValidItemDescription = (html) => {
-  if (!html) return false;
-  // Strip HTML tags and trim whitespace
+  if (typeof html !== 'string') return false;
   const textContent = html.replace(/<[^>]+>/g, '').trim();
   return textContent.length > 0;
 };
@@ -162,10 +158,11 @@ const QuotationForm = () => {
     unitPriceMultiplier: 1,
     currencyUnit: '',
     forCompany: 'Paktech',
-    items: [{ sNo: 1, refNo: 0, item: '', qty: 1, unitPrice: 0 }],
+    items: [{ sNo: 1, refNo: "", item: '', qty: 1, unitPrice: 0 }],
   });
   const [tenders, setTenders] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [tenderItems, setTenderItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
 
@@ -191,10 +188,35 @@ const QuotationForm = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const fetchTenderItems = async () => {
+      if (formData.tenderId) {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        if (!token) {
+          console.error('No token found');
+          return;
+        }
+        try  {
+          if (formData.tenderId != "None"){
+          const headers = { Authorization: `Bearer ${token}` };
+          const response = await axios.get(`${process.env.NEXT_PUBLIC_API}/api/tenders/${formData.tenderId}`, { headers });
+          setTenderItems(response.data.items || []);
+          }
+        } catch (error) {
+          console.error('Failed to fetch tender items:', error);
+          setTenderItems([]);
+        }
+      } else {
+        setTenderItems([]);
+      }
+    };
+    fetchTenderItems();
+  }, [formData.tenderId]);
+
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
     const updatedItems = [...formData.items];
-    updatedItems[index][name] = (name === 'qty' || name === 'unitPrice' || name === 'refNo') 
+    updatedItems[index][name] = (name === 'qty' || name === 'unitPrice') 
       ? Math.max(0, parseFloat(value) || 0) 
       : value;
     setFormData({ ...formData, items: updatedItems });
@@ -219,13 +241,13 @@ const QuotationForm = () => {
   const addItem = () => {
     const newItems = [...formData.items, { 
       sNo: formData.items.length + 1, 
-      refNo: 0, 
+      refNo: "", 
       item: '', 
       qty: 1, 
       unitPrice: 0 
     }];
     setFormData({ ...formData, items: newItems });
-    setActiveTab(newItems.length - 1); // Switch to the new tab
+    setActiveTab(newItems.length - 1);
   };
 
   const removeItem = (index) => {
@@ -273,8 +295,8 @@ const QuotationForm = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { tenderId, customerId, quoteDate, items } = formData;
-      if (!tenderId || !customerId || !quoteDate) {
+      const { customerId, quoteDate, items } = formData;
+      if (!customerId || !quoteDate) {
         alert('Please fill all required fields.');
         setLoading(false);
         return;
@@ -297,7 +319,7 @@ const QuotationForm = () => {
       const decoded = jwtDecode(token);
       const userId = decoded.userId || decoded.id || decoded._id;
 
-      const subTotal = validItems.reduce((acc, item) => acc + item.qty * item.unitPrice * (formData.unitPriceMultiplier || 1), 0);
+      const subTotal = validItems.reduce((acc, item) => acc + item.qty * item.unitPrice / (formData.unitPriceMultiplier || 1), 0);
       const taxAmount = subTotal * parseFloat(formData.tax || 0);
       const grandTotal = subTotal + taxAmount;
 
@@ -319,7 +341,6 @@ const QuotationForm = () => {
 
       alert('Quotation created successfully!');
 
-      // Reset form
       setFormData({
         tenderId: '',
         customerId: '',
@@ -338,9 +359,10 @@ const QuotationForm = () => {
         unitPriceMultiplier: 1,
         currencyUnit: '',
         forCompany: 'Paktech',
-        items: [{ sNo: 1, refNo: 0, item: '', qty: 1, unitPrice: 0 }],
+        items: [{ sNo: 1, refNo: '', item: '', qty: 1, unitPrice: 0 }],
       });
       setActiveTab(0);
+      setTenderItems([]);
     } catch (error) {
       console.error('Error creating quotation:', error);
       alert(`Failed to create quotation: ${error.response?.data?.message || error.message}`);
@@ -359,6 +381,9 @@ const QuotationForm = () => {
       .replace(/^./, s => s.toUpperCase())
       .replace(/(\b\w)/g, s => s.toUpperCase());
   };
+
+  // Helper to strip HTML for display in dropdown
+const stripHtml = (html = '') => html.replace(/<[^>]+>/g, '').trim();
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -383,6 +408,7 @@ const QuotationForm = () => {
                       onChange={handleChange}
                       InputLabelProps={{ shrink: true }}
                     >
+                      <MenuItem value="None">None</MenuItem>
                       {tenders.map((tender) => (
                         <MenuItem key={tender._id} value={tender._id}>{tender.title}</MenuItem>
                       ))}
@@ -526,7 +552,7 @@ const QuotationForm = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <StyledTextField
-                    label="Unit Price Multiplier"
+                    label="Net Price Multiplier"
                     name="unitPriceMultiplier"
                     type="number"
                     value={formData.unitPriceMultiplier}
@@ -594,7 +620,7 @@ const QuotationForm = () => {
           <StyledCard>
             <CardContent>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <SectionHeader variantUm="h5">Principals</SectionHeader>
+                <SectionHeader variant="h5">Principals</SectionHeader>
                 <Button
                   startIcon={<AddIcon />}
                   onClick={() => addArrayItem('principal')}
@@ -638,7 +664,7 @@ const QuotationForm = () => {
               <Divider sx={{ mb: 3 }} />
               <FormGrid container spacing={2}>
                 <Grid item xs={12} sm={6}>
-                  <StyledInputLabel>OEM Specification</StyledInputLabel>
+                  <StyledInputLabel>OEM Quotation</StyledInputLabel>
                   <Button
                     variant="outlined"
                     component="label"
@@ -662,7 +688,7 @@ const QuotationForm = () => {
                   )}
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <StyledInputLabel>Approval Document</StyledInputLabel>
+                  <StyledInputLabel>Approved By</StyledInputLabel>
                   <Button
                     variant="outlined"
                     component="label"
@@ -722,9 +748,9 @@ const QuotationForm = () => {
                     <Grid item xs={12} md={3}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <StyledTextField
-                          label="Reference Number"
+                          label="Model No"
                           name="refNo"
-                          type="number"
+              
                           value={item.refNo}
                           onChange={(e) => handleItemChange(index, e)}
                           fullWidth
@@ -751,10 +777,30 @@ const QuotationForm = () => {
                       </Box>
                     </Grid>
                     <Grid item xs={12} md={8}>
-                      <TipTapEditor
-                        content={item.item}
-                        onChange={(value) => handleItemChange(index, { target: { name: 'item', value } })}
-                      />
+                      {formData.tenderId && tenderItems.length > 0 ? (
+                        <FormControl fullWidth>
+                          <StyledTextField
+                            select
+                            label="Item Description"
+                            name="item"
+                            value={item.item}
+                            onChange={(e) => handleItemChange(index, e)}
+                            InputLabelProps={{ shrink: true }}
+                          >
+                            <MenuItem value="">Select Description</MenuItem>
+                            {tenderItems.map((tenderItem, idx) => (
+                              <MenuItem key={idx} value={tenderItem.item}>
+                                {stripHtml(tenderItem.item)}
+                              </MenuItem>
+                            ))}
+                          </StyledTextField>
+                        </FormControl>
+                      ) : (
+                        <TipTapEditor
+                          content={item.item}
+                          onChange={(value) => handleItemChange(index, { target: { name: 'item', value } })}
+                        />
+                      )}
                     </Grid>
                     <Grid item xs={12} md={1}>
                       <IconButton
@@ -784,7 +830,7 @@ const QuotationForm = () => {
                       isValidItemDescription(item.item) && item.qty > 0 && item.unitPrice > 0
                     );
                     const subTotal = validItems.reduce((acc, item) => 
-                      acc + item.qty * item.unitPrice * (formData.unitPriceMultiplier || 1), 0
+                      acc + item.qty * item.unitPrice / (formData.unitPriceMultiplier || 1), 0
                     );
                     const taxAmount = subTotal * parseFloat(formData.tax || 0);
                     const grandTotal = subTotal + taxAmount;

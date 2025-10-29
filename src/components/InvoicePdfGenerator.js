@@ -30,15 +30,14 @@ const StyledDialogButton = styled(Button)(({ theme }) => ({
 // Updated generateInvoicePdf function
 export const generateInvoicePdf = async (invoice, documentType) => {
   const doc = new jsPDF();
-  const logoImg = "/images/header.png"; // Path from public folder
 
   const {
     invoiceNo,
     billNo,
     invoiceDate,
     customerId = {},
-    userId = {},
     orderReference,
+    forCompany = 'Techno',
     items = [],
     subTotal = 0,
     totalGST = 0,
@@ -47,136 +46,366 @@ export const generateInvoicePdf = async (invoice, documentType) => {
     paymentInstructions = "",
   } = invoice;
 
-  // Load logo image
-  const img = new Image();
-  img.src = logoImg;
-
-  await new Promise((resolve, reject) => {
-    img.onload = () => {
-      doc.addImage(img, "PNG",  15, 10, 180, 20);
-      resolve();
-    };
-    img.onerror = () => reject(new Error('Failed to load logo image'));
-  });
-
-  // // Company Info (top-right)
-  // doc.setFontSize(10);
-  // doc.text("Paktech Instrumentation", 200, 10, { align: "right" });
-  // doc.text("D-60, Block – 4, KDA Scheme No.5,", 200, 14, { align: "right" });
-  // doc.text("Kehkashan Clifton, Karachi-75600,", 200, 18, { align: "right" });
-  // doc.text("Pakistan", 200, 22, { align: "right" });
-  // doc.text("Tel: +92-21-111 555 401", 200, 26, { align: "right" });
-  // doc.text("www.paktech1.com", 200, 30, { align: "right" });
-
-  // Title
-  doc.setFontSize(14);
-  doc.text(documentType.toUpperCase(), 105, 40, { align: "center" });
-
-  // Bill To & Invoice Info
-  const leftY = 48;
-  doc.setFontSize(10);
-
-  // BILL TO box
-  doc.rect(14, leftY, 90, 36);
-  doc.text("BILL TO:", 16, leftY + 6);
-  doc.setFontSize(9);
-  doc.text(customerId.name || "Customer", 16, leftY + 12);
-  doc.text(customerId.address || "Office Address", 16, leftY + 17);
-  doc.text(`TELL: ${customerId.phone || "---"}`, 16, leftY + 22);
-  doc.text(`Email: ${customerId.email || ""}`, 16, leftY + 27);
-  doc.text(`NTN: ${customerId.ntn || "N/A"}`, 16, leftY + 32);
-
-  // INVOICE INFO box
-  doc.setFontSize(9);
-  doc.rect(110, leftY, 85, 36);
-  const numberLabel = documentType === "Invoice" ? "INVOICE NO" : "BILL NO";
-  const numberValue = documentType === "Invoice" ? invoiceNo : billNo || "N/A";
-  doc.text(`${numberLabel}: ${numberValue}`, 112, leftY + 6);
-  doc.text(`DATE: ${new Date(invoiceDate).toLocaleDateString()}`, 112, leftY + 12);
-  doc.text(`Order Ref: ${orderReference?.quoteNo || orderReference?._id || "N/A"}`, 112, leftY + 18);
-  doc.text(`NTN: 0615834-0 `, 112, leftY + 24);
-  doc.text(`GST: 12-00-9999-125-55`, 112, leftY + 30);
-
-  // Item Table
-  const itemRows = items.map((item, i) => [
-    i + 1,
-    item.description,
-    item.qty,
-    item.unitPrice.toFixed(2),
-    item.gst.toFixed(2),
-    item.totalWithTax.toFixed(2),
-  ]);
-
-  let finalY = leftY + 38; // Initialize finalY
-  autoTable(doc, {
-    startY: leftY + 38,
-    head: [["S. No", "DESCRIPTION", "Qty", "Unit Price\nwithout Tax", "GST @ 18%", "TOTAL with Tax"]],
-    body: itemRows,
-    styles: { fontSize: 9, halign: 'center' },
-    headStyles: { fillColor: [20, 50, 100], textColor: 255 },
-    columnStyles: {
-      1: { halign: 'left' },
+  // Company-specific configurations
+  const companyConfig = {
+    Paktech: {
+      logoPath: null, // No header image
+      logo: { x: 0, y: 0, width: 0, height: 0 }, // Disabled
+      companyInfo: [],
+      footerInfo: {
+        address: "",
+        contact: "",
+        link: "",
+      },
+      styles: {
+        headerColor: [0, 0, 0], // Black for text
+        font: "Helvetica",
+        titleFontSize: 18,
+        textFontSize: 10,
+        tableHeadFillColor: [200, 200, 200], // Light gray
+        tableHeadTextColor: [0, 0, 0],
+      },
     },
-    didParseCell: (data) => {
-      // Adjust cell height for description if needed
-      if (data.column.index === 1 && data.cell.section === 'body') {
-        data.cell.styles.cellWidth = 'auto'; // Allow wrapping
-      }
+    'Link Lines': {
+      logoPath: "/images/linklines_header.png",
+      logo: { x: 14, y: 10, width: 80, height: 25 },
+      companyInfo: [
+        "Link Lines Enterprises",
+        "Office No. 12, 2nd Floor,",
+        "Gulberg Plaza, Karachi-75500, Pakistan",
+        "Tel: +92-21-987 654 321",
+        "www.linklines.com",
+      ],
+      footerInfo: {
+        address: "OFFICE NO. 12, GULBERG PLAZA, KARACHI 75500=PAKISTAN",
+        contact: "TEL: (92 21) 98765432   E-MAIL: contact@linklines.com   Web: www.linklines.com",
+        link: "http://www.linklines.com",
+      },
+      styles: {
+        headerColor: [0, 128, 0], // Green
+        font: "Times",
+        titleFontSize: 14,
+        textFontSize: 9,
+        tableHeadFillColor: [0, 128, 0],
+        tableHeadTextColor: [255, 255, 255],
+      },
     },
-    didDrawPage: (data) => {
-      finalY = data.cursor.y; // Update finalY after each page
+    Techno: {
+      logoPath: "/images/techno_header.png",
+      logo: { x: 15, y: 10, width: 180, height: 20 },
+      companyInfo: [
+        "Techno Instruments",
+        "Suite 101, Business Tower,",
+        "Saddar, Karachi-74000, Pakistan",
+        "Tel: +92-21-123 456 789",
+        "www.technoinstruments.com",
+      ],
+      footerInfo: {
+        address: "SUITE 101, BUSINESS TOWER, SADDAR, KARACHI 74000=PAKISTAN",
+        contact: "TEL: (92 21) 12345678   E-MAIL: info@technoinstruments.com   Web: www.technoinstruments.com",
+        link: "http://www.technoinstruments.com",
+      },
+      styles: {
+        headerColor: [20, 50, 100], // Dark Blue
+        font: "Courier",
+        titleFontSize: 14,
+        textFontSize: 9,
+        tableHeadFillColor: [20, 50, 100],
+        tableHeadTextColor: [255, 255, 255],
+      },
     },
-  });
+  };
 
-  // Ensure we're on the last page
-  const totalPages = doc.internal.getNumberOfPages();
-  doc.setPage(totalPages);
+  const config = companyConfig[forCompany] || companyConfig.Techno;
 
-  // Footer (only on the last page)
-  const footerY = finalY + 5;
+  // Set font for the document
+  doc.setFont(config.styles.font);
+  var numberValue
+  // Template for Paktech
+  if (forCompany === 'Paktech') {
+   // --- Header Title ---
+doc.setFontSize(config.styles.titleFontSize);
+doc.setTextColor(...config.styles.headerColor);
+doc.text(documentType.toUpperCase(), 105, 15, { align: "center" });
 
-  // Amount in Words box
-  doc.rect(14, footerY, 160, 10);
-  doc.setFontSize(9);
-  doc.text("AMOUNT IN WORDS", 16, footerY + 6);
-  doc.setFontSize(10);
-  doc.text(
-    amountInWords ? amountInWords.toUpperCase() : "__________________________",
-    60,
-    footerY + 6
-  );
+// --- Supplier Box ---
+const leftY = 25;
+doc.setFontSize(config.styles.textFontSize);
+doc.rect(14, leftY, 90, 30);
+doc.text("Supplier Name: Paktech Instrument Co.", 16, leftY + 6);
+doc.text("Address: 236, 1st Floor, Street 17,", 16, leftY + 11);
+doc.text("Block-3 Sharafabad Karachi", 16, leftY + 16);
+doc.text("NTN: 0615834-0  GST#: 12-00-9999-125-55", 16, leftY + 21);
+doc.text("Phone: 34949215", 16, leftY + 26);
 
-  // Grand Total box
-  doc.rect(174, footerY, 26, 10);
-  doc.text(grandTotal.toFixed(2), 198, footerY + 6, { align: "right" });
+// --- Buyer Box ---
+doc.rect(110, leftY, 90, 30);
+doc.text("Buyer Name: Project Director", 112, leftY + 6);
+doc.text("University of Karachi", 112, leftY + 11);
+doc.text("University Road", 112, leftY + 16);
+doc.text("Karachi", 112, leftY + 21);
+doc.text("NTN/S Tax #: ", 112, leftY + 26);
 
-  // Footer Note
-  doc.setFontSize(9);
-  doc.text(
-    paymentInstructions || "N/A",
-    14,
-    footerY + 20
-  );
+// --- Reference Info Row ---
+doc.setFontSize(config.styles.textFontSize - 1);
+doc.text(
+  `Ref: Tender for Supply of Chemical, Glassware and Spares for Lab Equipment - University of Karachi`,
+  14,
+  leftY + 38
+);
+doc.text(
+  `Tender No: ${orderReference?.tenderNo || "DPD/CGS/2024/006-10"}, Against Order: ${orderReference?.quoteNo || "DPD/SO/270"}`,
+  14,
+  leftY + 43
+);
 
-  // Footer Divider and Info (last page only)
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.5);
-  doc.line(14, 285, 196, 285);
+// --- Items Table ---
+let itemRows, tableHead;
+if (documentType === "Delivery Chalan") {
+  itemRows = items.map((item, i) => [i + 1, item.description, item.qty]);
+  tableHead = [["S. No", "Description", "Qty"]];
+} else {
+  itemRows = items.map((item, i) => [
+  i + 1,
+  item.description || "",
+  (item.unitPrice ?? 0).toFixed(2),
+  ((item.qty ?? 0) * (item.unitPrice ?? 0)).toFixed(2), // Excl. Tax
+  (item.gst ?? 0).toFixed(2),
+  (item.totalWithTax ?? ((item.qty ?? 0) * (item.unitPrice ?? 0) + (item.gst ?? 0))).toFixed(2),
+]);
+  tableHead = [["S. No", "Description", "Unit Price", "Excl. Tax", "GST 18%", "Total"]];
+}
 
-  doc.setFontSize(8).setTextColor(0);
-  doc.setFont(undefined, 'bold');
-  doc.text("# 236, 1st FLOOR, STREET 15, BLOCK-3, SHARAFABAD, KARACHI 74800=PAKISTAN", 105, 290, { align: "center" });
+let finalY = leftY + 48;
+autoTable(doc, {
+  startY: finalY,
+  head: tableHead,
+  body: itemRows,
+  styles: {
+    fontSize: config.styles.textFontSize,
+    halign: 'center',
+    font: config.styles.font,
+  },
+  headStyles: {
+    fillColor: config.styles.tableHeadFillColor,
+    textColor: config.styles.tableHeadTextColor,
+  },
+  columnStyles: { 1: { halign: 'left' } },
+  didDrawPage: (data) => {
+    finalY = data.cursor.y;
+  },
+});
 
-  doc.setFont(undefined, 'normal');
-  doc.textWithLink(
-    "TEL: (92 21) 34949215 / 4930971   E-MAIL: info@paktech1.com   Web: www.paktech1.com",
-    105,
-    295,
-    {
-      align: "center",
-      link: "http://www.paktech1.com"
+// --- Totals Footer Box ---
+if (documentType !== "Delivery Chalan") {
+  const footerY = finalY + 10;
+  doc.rect(14, footerY, 181, 30);
+  doc.setFontSize(config.styles.textFontSize);
+  doc.text(`Subtotal: ${subTotal.toFixed(2)}`, 20, footerY + 8);
+  doc.text(`Total GST: ${totalGST.toFixed(2)}`, 20, footerY + 14);
+  doc.text(`Grand Total: ${grandTotal.toFixed(2)}`, 20, footerY + 20);
+  doc.text(`In Words: ${amountInWords || "__________________________"}`, 20, footerY + 26);
+}
+
+// --- Additional Notes ---
+if (paymentInstructions) {
+  doc.setFontSize(config.styles.textFontSize);
+  doc.text(paymentInstructions, 20, finalY + 45);
+}
+
+// --- Footer ---
+doc.setFontSize(config.styles.textFontSize);
+doc.text("Received By: ___________________________", 14, 285);
+doc.setFontSize(config.styles.textFontSize - 1);
+doc.text("Paktech Instruments Co", 14, 290);
+  }
+  // Template for Link Lines
+  else if (forCompany === 'Link Lines') {
+    // Header Background
+    doc.setFillColor(...config.styles.headerColor);
+    doc.rect(0, 0, 210, 30, 'F');
+
+    // Company Info (right side)
+    doc.setFontSize(config.styles.textFontSize);
+    doc.setTextColor(255, 255, 255);
+    config.companyInfo.forEach((line, index) => {
+      doc.text(line, 200, 10 + index * 5, { align: "right" });
+    });
+
+    // Title
+    doc.setFontSize(config.styles.titleFontSize);
+    doc.text(documentType.toUpperCase(), 14, 45);
+
+    // Bill To & Invoice Info
+    const leftY = 55;
+    doc.setFontSize(config.styles.textFontSize);
+
+    // BILL TO box
+    doc.rect(14, leftY, 90, 36);
+    doc.text("BILL TO:", 16, leftY + 6);
+    doc.text(customerId.name || "Customer", 16, leftY + 12);
+    doc.text(customerId.address || "Office Address", 16, leftY + 17);
+    doc.text(`TELL: ${customerId.phone || "---"}`, 16, leftY + 22);
+    doc.text(`Email: ${customerId.email || ""}`, 16, leftY + 27);
+    doc.text(`NTN: ${customerId.ntn || "N/A"}`, 16, leftY + 32);
+
+    // INVOICE INFO box
+    doc.rect(110, leftY, 85, 36);
+    const numberLabel = documentType === "Invoice" ? "INVOICE NO" : documentType === "Bill" ? "BILL NO" : "CHALAN NO";
+    numberValue = documentType === "Invoice" ? invoiceNo : billNo || "N/A";
+    doc.text(`${numberLabel}: ${numberValue}`, 112, leftY + 6);
+    doc.text(`DATE: ${new Date(invoiceDate).toLocaleDateString()}`, 112, leftY + 12);
+    doc.text(`Order Ref: ${orderReference?.quoteNo || orderReference?._id || "N/A"}`, 112, leftY + 18);
+    doc.text(`NTN: 0615834-0`, 112, leftY + 24);
+    doc.text(`GST: 12-00-9999-125-55`, 112, leftY + 30);
+
+    // Item Table
+    let itemRows, tableHead;
+    if (documentType === "Delivery Chalan") {
+      itemRows = items.map((item, i) => [i + 1, item.description, item.qty]);
+      tableHead = [["S. No", "DESCRIPTION", "Qty"]];
+    } else {
+      itemRows = items.map((item, i) => [
+        i + 1,
+        item.description,
+        item.qty,
+        item.unitPrice.toFixed(2),
+        item.gst.toFixed(2),
+        item.totalWithTax.toFixed(2),
+      ]);
+      tableHead = [["S. No", "DESCRIPTION", "Qty", "Unit Price\nwithout Tax", "GST @ 18%", "TOTAL with Tax"]];
     }
-  );
+
+    let finalY = leftY + 38;
+    autoTable(doc, {
+      startY: leftY + 38,
+      head: tableHead,
+      body: itemRows,
+      styles: { fontSize: config.styles.textFontSize, halign: 'center', font: config.styles.font },
+      headStyles: { fillColor: config.styles.tableHeadFillColor, textColor: config.styles.tableHeadTextColor },
+      columnStyles: { 1: { halign: 'left' } },
+      didParseCell: (data) => {
+        if (data.column.index === 1 && data.cell.section === 'body') {
+          data.cell.styles.cellWidth = 'auto';
+        }
+      },
+      didDrawPage: (data) => {
+        finalY = data.cursor.y;
+      },
+    });
+
+    // Footer
+    const totalPages = doc.internal.getNumberOfPages();
+    doc.setPage(totalPages);
+    const footerY = finalY + 10;
+
+    if (documentType !== "Delivery Chalan") {
+      doc.setFontSize(config.styles.textFontSize);
+      doc.text("AMOUNT IN WORDS: " + (amountInWords ? amountInWords.toUpperCase() : "__________________________"), 14, footerY);
+      doc.text(`GRAND TOTAL: ${grandTotal.toFixed(2)}`, 200, footerY, { align: "right" });
+    }
+
+    doc.setFontSize(config.styles.textFontSize);
+    doc.text(paymentInstructions || "N/A", 14, footerY + 15);
+
+    doc.setDrawColor(...config.styles.headerColor);
+    doc.setLineWidth(0.3);
+    doc.line(14, 290, 196, 290);
+    doc.setFontSize(8).setTextColor(0);
+    doc.setFont(config.styles.font, 'normal');
+    doc.textWithLink(config.footerInfo.contact, 105, 295, { align: "center", link: config.footerInfo.link });
+  }
+  // Template for Techno
+  else {
+    // Title
+    doc.setFontSize(config.styles.titleFontSize);
+    doc.setTextColor(0, 0, 0);
+    doc.text(documentType.toUpperCase(), 105, 40, { align: "center" });
+
+    // Bill To & Invoice Info
+    const leftY = 48;
+    doc.setFontSize(config.styles.textFontSize);
+
+    // BILL TO box
+    doc.rect(14, leftY, 90, 36);
+    doc.text("BILL TO:", 16, leftY + 6);
+    doc.text(customerId.name || "Customer", 16, leftY + 12);
+    doc.text(customerId.address || "Office Address", 16, leftY + 17);
+    doc.text(`TELL: ${customerId.phone || "---"}`, 16, leftY + 22);
+    doc.text(`Email: ${customerId.email || ""}`, 16, leftY + 27);
+    doc.text(`NTN: ${customerId.ntn || "N/A"}`, 16, leftY + 32);
+
+    // INVOICE INFO box
+    doc.rect(110, leftY, 85, 36);
+    const numberLabel = documentType === "Invoice" ? "INVOICE NO" : documentType === "Bill" ? "BILL NO" : "CHALAN NO";
+    numberValue = documentType === "Invoice" ? invoiceNo : billNo || "N/A";
+    doc.text(`${numberLabel}: ${numberValue}`, 112, leftY + 6);
+    doc.text(`DATE: ${new Date(invoiceDate).toLocaleDateString()}`, 112, leftY + 12);
+    doc.text(`Order Ref: ${orderReference?.quoteNo || orderReference?._id || "N/A"}`, 112, leftY + 18);
+    doc.text(`NTN: 0615834-0`, 112, leftY + 24);
+    doc.text(`GST: 12-00-9999-125-55`, 112, leftY + 30);
+
+    // Item Table
+    let itemRows, tableHead;
+    if (documentType === "Delivery Chalan") {
+      itemRows = items.map((item, i) => [i + 1, item.description, item.qty]);
+      tableHead = [["S. No", "DESCRIPTION", "Qty"]];
+    } else {
+      itemRows = items.map((item, i) => [
+        i + 1,
+        item.description,
+        item.qty,
+        item.unitPrice.toFixed(2),
+        item.gst.toFixed(2),
+        item.totalWithTax.toFixed(2),
+      ]);
+      tableHead = [["S. No", "DESCRIPTION", "Qty", "Unit Price\nwithout Tax", "GST @ 18%", "TOTAL with Tax"]];
+    }
+
+    let finalY = leftY + 38;
+    autoTable(doc, {
+      startY: leftY + 38,
+      head: tableHead,
+      body: itemRows,
+      styles: { fontSize: config.styles.textFontSize, halign: 'center', font: config.styles.font },
+      headStyles: { fillColor: config.styles.tableHeadFillColor, textColor: config.styles.tableHeadTextColor },
+      columnStyles: { 1: { halign: 'left' } },
+      didParseCell: (data) => {
+        if (data.column.index === 1 && data.cell.section === 'body') {
+          data.cell.styles.cellWidth = 'auto';
+        }
+      },
+      didDrawPage: (data) => {
+        finalY = data.cursor.y;
+      },
+    });
+
+    // Footer
+    const totalPages = doc.internal.getNumberOfPages();
+    doc.setPage(totalPages);
+    const footerY = finalY + 5;
+
+    if (documentType !== "Delivery Chalan") {
+      doc.rect(14, footerY, 160, 10);
+      doc.setFontSize(config.styles.textFontSize);
+      doc.text("AMOUNT IN WORDS", 16, footerY + 6);
+      doc.text(amountInWords ? amountInWords.toUpperCase() : "__________________________", 60, footerY + 6);
+      doc.rect(174, footerY, 26, 10);
+      doc.text(grandTotal.toFixed(2), 198, footerY + 6, { align: "right" });
+    }
+
+    doc.setFontSize(config.styles.textFontSize);
+    doc.text(paymentInstructions || "N/A", 14, footerY + 20);
+
+    doc.setDrawColor(...config.styles.headerColor);
+    doc.setLineWidth(0.5);
+    doc.line(14, 285, 196, 285);
+    doc.setFontSize(8).setTextColor(0);
+    doc.setFont(config.styles.font, 'bold');
+    doc.text(config.footerInfo.address, 105, 290, { align: "center" });
+    doc.setFont(config.styles.font, 'normal');
+    doc.textWithLink(config.footerInfo.contact, 105, 295, { align: "center", link: config.footerInfo.link });
+  }
 
   // Save
   doc.save(`${documentType}_${numberValue}.pdf`);
@@ -220,7 +449,7 @@ const InvoicePdfGenerator = ({ invoice }) => {
         </DialogTitle>
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
-            Please choose whether to generate an Invoice or a Bill.
+            Please choose whether to generate an Invoice, a Bill, or a Delivery Chalan.
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <StyledDialogButton
@@ -238,6 +467,14 @@ const InvoicePdfGenerator = ({ invoice }) => {
               fullWidth
             >
               Bill
+            </StyledDialogButton>
+            <StyledDialogButton
+              variant={documentType === 'Delivery Chalan' ? 'contained' : 'outlined'}
+              color="primary"
+              onClick={() => setDocumentType('Delivery Chalan')}
+              fullWidth
+            >
+              Delivery Chalan
             </StyledDialogButton>
           </Box>
         </DialogContent>

@@ -171,7 +171,7 @@ const initialState = {
   earnestMoney: "",
   earnestMoneyAmount: 0,
   performanceGuaranteeImage: "",
-  items: [{ sNo: 1, item: "", tenderItemRef: "", expectedDeliveryDate: "" }],
+  items: [{ sNo: 1, itemName:"", item: "", tenderItemRef: "", unitPrice: 0, expectedDeliveryDate: "" }],
   totalAmountQuoted: 0,
   numItemsAwarded: 0,
   awardedAmount: 0,
@@ -241,7 +241,9 @@ const TenderForm = () => {
         {
           sNo: prev.items.length + 1,
           item: "",
+          itemName:"",
           tenderItemRef: "",
+          unitPrice:0,
           expectedDeliveryDate: ""
         }
       ]
@@ -607,7 +609,7 @@ const TenderForm = () => {
                 <Grid item xs={12} md={6}>
                   <StyledTextField
                     select
-                    label="Mode of Delivery"
+                    label="Mode of Payment"
                     name="modeOfDelivery"
                     value={formData.modeOfDelivery}
                     onChange={handleChange}
@@ -780,6 +782,20 @@ const TenderForm = () => {
                           fullWidth 
                           value={item.tenderItemRef} 
                           onChange={(e) => handleItemChange(index, "tenderItemRef", e.target.value)}
+                          InputLabelProps={{ shrink: true }}
+                        />
+                         <StyledTextField 
+                          label="Item Name" 
+                          fullWidth 
+                          value={item.itemName} 
+                          onChange={(e) => handleItemChange(index, "itemName", e.target.value)}
+                          InputLabelProps={{ shrink: true }}
+                        />
+                        <StyledTextField 
+                          label="Unit Price" 
+                          fullWidth 
+                          value={item.unitPrice} 
+                          onChange={(e) => handleItemChange(index, "unitPrice", e.target.value)}
                           InputLabelProps={{ shrink: true }}
                         />
                         <StyledTextField 
