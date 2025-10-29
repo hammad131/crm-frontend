@@ -335,9 +335,18 @@ const QuotationForm = () => {
         principal: formData.principal.filter(p => p),
       };
 
-      await axios.post(`${process.env.NEXT_PUBLIC_API}/api/quotations`, quotationData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      try {
+        const res = await axios.post(
+          `${process.env.NEXT_PUBLIC_API}/api/quotations`,
+          quotationData,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        // success toast etc.
+      } catch (err) {
+        console.error('AXIOS ERROR → status:', err.response?.status);
+        console.error('AXIOS ERROR → data:', err.response?.data);
+        console.error('AXIOS ERROR → message:', err.message);
+      }
 
       alert('Quotation created successfully!');
 
