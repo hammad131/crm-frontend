@@ -17,7 +17,7 @@ const VendorDetailPage = () => {
     if (!id) return;
     const fetchVendor = async () => {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API}api/vendors/${id}`, {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API}/api/vendors/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setVendor(res.data);

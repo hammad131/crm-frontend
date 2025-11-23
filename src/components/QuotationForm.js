@@ -336,7 +336,7 @@ const QuotationForm = () => {
       };
 
       try {
-        const res = await axios.post(
+         await axios.post(
           `${process.env.NEXT_PUBLIC_API}/api/quotations`,
           quotationData,
           { headers: { Authorization: `Bearer ${token}` } }
