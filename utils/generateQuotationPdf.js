@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable";
 import DOMPurify from "dompurify";
 
 // Function for Paktech quotation template
+// Function for Paktech quotation template
 export const generatePaktechQuotationPdf = (quotation) => {
   const doc = new jsPDF("p", "mm", "a4");
 
@@ -33,6 +34,11 @@ export const generatePaktechQuotationPdf = (quotation) => {
 
   const taxAmount = subTotal * tax;
 
+  // Function to format numbers with thousand separators
+  const formatNumber = (number) => {
+    return Number(number).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
   // Header
   doc.setFontSize(14).setTextColor(200, 0, 0).setFont(undefined, "bold");
   doc.text("QUOTATION", 105, 40, { align: "center" });
@@ -50,8 +56,9 @@ export const generatePaktechQuotationPdf = (quotation) => {
   doc.setFontSize(10).setFont(undefined, "bold").setTextColor(0).text("Bill To", 14, y);
   doc.setFont(undefined, "normal").setFontSize(9);
   const addressLines = [
-    customerId.name || "Paktech Instruments Company",
-    customerId.address || "Soan Garden, Block F, Blossom Road, House no 10",
+    `${customerId.name},` || "Paktech Instruments Company",
+    `${customerId.universityName},`,
+    `${customerId.address}.` || "Soan Garden, Block F, Blossom Road, House no 10",
   ];
   addressLines.forEach((line, i) => doc.text(line, 14, y + 5 + i * 5));
 
@@ -114,29 +121,27 @@ export const generatePaktechQuotationPdf = (quotation) => {
       .replace(/&amp;/g, '&');
   };
 
-  // Item Table
+  // Item Table - Tax column removed
   autoTable(doc, {
     startY: doc.lastAutoTable.finalY + 10,
-    head: [["Sr-#", "Model", "Item & Description", "Qty", `Rate (${currencyUnit})`, "Tax", `Amount (${currencyUnit})`]],
+    head: [["Sr-#", "Model", "Item & Description", "Qty", `Rate (${currencyUnit})`, `Amount (${currencyUnit})`]],
     body: items.map((item, i) => [
       item.sNo || i + 1,
       item.refNo || "-",
       htmlToFormattedText(item.item),
       item.qty || 0,
-      ((item.unitPrice || 0) * unitPriceMultiplier).toFixed(2),
-      (item.tax || 0).toFixed(2),
-      ((item.unitPrice || 0) * item.qty * unitPriceMultiplier).toFixed(2),
+      formatNumber((item.unitPrice || 0) * unitPriceMultiplier),
+      formatNumber((item.unitPrice || 0) * item.qty * unitPriceMultiplier),
     ]),
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [242, 242, 242], textColor: 0, fontStyle: "bold" },
     columnStyles: {
       0: { cellWidth: 12 },
       1: { cellWidth: 20 },
-      2: { cellWidth: 70, valign: "top" },
+      2: { cellWidth: 85, valign: "top" }, // Increased width since tax column is removed
       3: { halign: "right", cellWidth: 15 },
-      4: { halign: "right", cellWidth: 20 },
-      5: { halign: "right", cellWidth: 20 },
-      6: { halign: "right", cellWidth: 25 },
+      4: { halign: "right", cellWidth: 25 },
+      5: { halign: "right", cellWidth: 25 },
     },
     theme: "grid",
     pageBreak: "auto",
@@ -161,14 +166,14 @@ export const generatePaktechQuotationPdf = (quotation) => {
 
   doc.setFontSize(9).setFont(undefined, "normal").setTextColor(0);
   doc.text("Sub Total", 160, yT, { align: "right" });
-  doc.text(`${subTotal.toFixed(2)}`, 195, yT, { align: "right" });
+  doc.text(`${formatNumber(subTotal)}`, 195, yT, { align: "right" });
 
   doc.text("GST Amount", 160, yT + 5, { align: "right" });
-  doc.text(` ${taxAmount.toFixed(2)}`, 195, yT + 5, { align: "right" });
+  doc.text(` ${formatNumber(taxAmount)}`, 195, yT + 5, { align: "right" });
 
   doc.setFont(undefined, "bold").setTextColor(200, 0, 0);
   doc.text("Total", 160, yT + 18, { align: "right" });
-  doc.text(`${currencyUnit} ${grandTotal.toFixed(2)}`, 195, yT + 18, { align: "right" });
+  doc.text(`${currencyUnit} ${formatNumber(grandTotal)}`, 195, yT + 18, { align: "right" });
 
   yT += 28;
 
@@ -177,7 +182,6 @@ export const generatePaktechQuotationPdf = (quotation) => {
     `Prices quoted in ${currencyUnit}`,
     `Origin: ${coOrigin.length ? coOrigin.join(", ") : "N/A"}`,
     `Warranty: ${warranty || "N/A"}`,
-    "Training will be conducted by factory trained engineer",
     `Delivery: ${delivery || "N/A"}`,
     "*Due to global supply change issues delivery dates are tentative"
   ];
@@ -219,16 +223,16 @@ export const generatePaktechQuotationPdf = (quotation) => {
     yT = 20;
   }
 
-  doc.setFontSize(9).setFont(undefined, "bold").text("Authorized Signature", 14, yT + 10);
+  
   try {
-    doc.addImage("/images/signature.png", "PNG", 14, yT + 5, 50, 30);
+    doc.addImage("/images/signature.png", "PNG", 14, yT + 5, 61, 30);
   } catch {
     doc.setFontSize(8).text("Authorized Signature: ___________________", 14, yT + 10);
   }
+  doc.setFontSize(9).setFont(undefined, "bold").text("Authorized Signature ___________________", 14, yT + 25);
 
   doc.save(`Quotation_${quoteNo || "Paktech"}.pdf`);
 };
-
 // Function for Techno quotation template
 export const generateTechnoQuotationPdf = (quotation) => {
   const doc = new jsPDF();
