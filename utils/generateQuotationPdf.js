@@ -33,7 +33,7 @@ export const generatePaktechQuotationPdf = (quotation) => {
   } = quotation;
 
   const taxAmount = subTotal * tax;
-
+  const safeCustomer = customerId || {};
   // Function to format numbers with thousand separators
   const formatNumber = (number) => {
     return Number(number).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -56,9 +56,9 @@ export const generatePaktechQuotationPdf = (quotation) => {
   doc.setFontSize(10).setFont(undefined, "bold").setTextColor(0).text("Bill To", 14, y);
   doc.setFont(undefined, "normal").setFontSize(9);
   const addressLines = [
-    `${customerId.name},` || "Paktech Instruments Company",
-    `${customerId.universityName},`,
-    `${customerId.address}.` || "Soan Garden, Block F, Blossom Road, House no 10",
+    safeCustomer.name?`${safeCustomer.name},`:"",
+    safeCustomer.universityName?`${safeCustomer.universityName},`: '',
+    safeCustomer.address?`${safeCustomer.address}.` : "",
   ];
   addressLines.forEach((line, i) => doc.text(line, 14, y + 5 + i * 5));
 
@@ -79,7 +79,7 @@ export const generatePaktechQuotationPdf = (quotation) => {
       ["Quotation No.", `${quoteNo}`],
       ["Quotation Date", new Date(quoteDate).toLocaleDateString()],
       ["Expiry Date", expiryDate || new Date(new Date(quoteDate).setDate(new Date(quoteDate).getDate() + quoteValidityDays)).toLocaleDateString()],
-      ["Customer Ref", customerId.name || ""],
+      ["Customer Ref", safeCustomer.name || ""],
       ["Lead By", userId.name || ""],
       ["Incoterms", `${mode}${mode === "Other" ? ` (${modeOtherText})` : ""}`],
       ["Payment Terms", paymentTerms],
@@ -276,11 +276,11 @@ export const generateTechnoQuotationPdf = (quotation) => {
 
   // Customer box
   const customerLines = [
-    `${customerId.departmentName || "N/A"} Department`,
-    `${customerId.universityName || "N/A"}`,
-    `Address: ${customerId.address || "N/A"}`,
-    `Phone: ${customerId.phone || "N/A"}`,
-    `Email: ${customerId.email || "N/A"}`,
+    `${safeCustomer.departmentName || "N/A"} Department`,
+    `${safeCustomer.universityName || "N/A"}`,
+    `Address: ${safeCustomer.address || "N/A"}`,
+    `Phone: ${safeCustomer.phone || "N/A"}`,
+    `Email: ${safeCustomer.email || "N/A"}`,
   ];
   const customerBoxX = 120;
   const customerBoxY = 40;
