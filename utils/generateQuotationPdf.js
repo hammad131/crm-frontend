@@ -225,11 +225,11 @@ export const generatePaktechQuotationPdf = (quotation) => {
 
   
   try {
-    doc.addImage("/images/signature.png", "PNG", 14, yT + 5, 61, 30);
+    doc.addImage("/images/signature.png", "PNG", 14, yT-5, 61, 30);
   } catch {
     doc.setFontSize(8).text("Authorized Signature: ___________________", 14, yT + 10);
   }
-  doc.setFontSize(9).setFont(undefined, "bold").text("Authorized Signature ___________________", 14, yT + 25);
+  doc.setFontSize(9).setFont(undefined, "bold").text("Authorized Signature ___________________", 14, yT + 20);
 
   doc.save(`Quotation_${quoteNo || "Paktech"}.pdf`);
 };
